@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Article;
 use App\Models\Receipt;
 use App\Services\ReceiptParser;
+use Codesmiths\LaravelOcrSpace\Enums\Language;
+use Codesmiths\LaravelOcrSpace\Enums\OcrSpaceEngine;
 use Codesmiths\LaravelOcrSpace\Facades\OcrSpace;
 use Codesmiths\LaravelOcrSpace\OcrSpaceOptions;
 use Illuminate\Http\Request;
@@ -49,7 +51,11 @@ class ReceiptController extends Controller
 
         $ocr = OcrSpace::parseImageFile(
             $filePath,
-            OcrSpaceOptions::make(),
+            OcrSpaceOptions::make()
+                ->language(Language::French)
+                ->ocrEngine(OcrSpaceEngine::Engine2)
+                ->isTable(true)
+                ->scale(true),
         );
 
         $ocrText = $ocr->getParsedResults()->first()->getParsedText();
@@ -61,13 +67,13 @@ class ReceiptController extends Controller
         $parser = new ReceiptParser();
         $parsedData = $parser->parse($ocrText);
 
-        dd([
-            'articles_count' => count($parsedData['articles']),
-            'articles' => $parsedData['articles'],
-            'date' => $parsedData['date'],
-            'store' => $parsedData['store'],
-            'total' => $parsedData['total'],
-        ]);
+//        dd([
+//            'articles_count' => count($parsedData['articles']),
+//            'articles' => $parsedData['articles'],
+//            'date' => $parsedData['date'],
+//            'store' => $parsedData['store'],
+//            'total' => $parsedData['total'],
+//        ]);
 
         $receipt->update([
             'date' => $parsedData['date'],

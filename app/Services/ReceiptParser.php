@@ -44,7 +44,8 @@ class ReceiptParser
 
     protected function extractTotal(string $text): ?float
     {
-        if (preg_match('/Total\s*[:\s]*(\d+)[,\s]+(\d+)/i', $text, $matches)) {
+        // Cherche le total avec le symbole € (ex: "26 , 28 €")
+        if (preg_match('/(\d+)\s*[,.\s]+\s*(\d+)\s*€/i', $text, $matches)) {
             return (float) ($matches[1].'.'.$matches[2]);
         }
 
@@ -56,10 +57,8 @@ class ReceiptParser
         $articles = [];
         $lines = explode("\n", $text);
         $inSelfscan = false;
-        $articleLines = [];
-        $priceLines = [];
 
-        foreach ($lines as $index => $line) {
+        foreach ($lines as $line) {
             $line = trim($line);
 
             if (stripos($line, 'Début Selfscan') !== false) {
@@ -75,32 +74,57 @@ class ReceiptParser
             }
 
             if ($inSelfscan && str_starts_with($line, '*')) {
-                $articleLines[] = $line;
-            }
-
-            if (! $inSelfscan && preg_match('/^(\d+)[,\.\s]+(\d+)\s*€?$/', $line, $matches)) {
-                $price = (float) ($matches[1].'.'.$matches[2]);
-                if ($price > 0 && $price < 1000) {
-                    $priceLines[] = $price;
+                $article = $this->parseArticleLine($line);
+                if ($article) {
+                    $articles[] = $article;
                 }
             }
         }
 
-        foreach ($articleLines as $index => $line) {
-            $name = substr($line, 1);
-            $name = trim(preg_replace('/\s+x\d+$/', '', $name));
-            $quantity = $this->extractQuantity($line);
+        return $articles;
+    }
 
-            $price = $priceLines[$index] ?? null;
+    protected function parseArticleLine(string $line): ?array
+    {
+        // Enlever le * au début
+        $line = ltrim($line, '*');
 
-            $articles[] = [
-                'name' => $name,
-                'price' => $price,
-                'quantity' => $quantity,
-            ];
+        // Séparer par tabulation
+        $parts = explode("\t", $line);
+
+        if (count($parts) < 2) {
+            return null;
         }
 
-        return $articles;
+        $name = trim($parts[0]);
+        $quantity = 1;
+        $price = null;
+
+        // Le dernier élément est toujours le prix total
+        $lastPart = end($parts);
+        if (preg_match('/(\d+)[,.](\d+)/', $lastPart, $matches)) {
+            $price = (float) ($matches[1].'.'.$matches[2]);
+        }
+
+        // Chercher la quantité dans le format "2*2,48" ou "X30" dans le nom
+        if (count($parts) >= 2) {
+            $secondPart = $parts[1] ?? '';
+            if (preg_match('/^(\d+)\*/', $secondPart, $matches)) {
+                $quantity = (int) $matches[1];
+            }
+        }
+
+        // Chercher quantité dans le nom (ex: "OEUFS FRAIS X30")
+        if (preg_match('/\s+X(\d+)$/i', $name, $matches)) {
+            $quantity = (int) $matches[1];
+            $name = preg_replace('/\s+X\d+$/i', '', $name);
+        }
+
+        return [
+            'name' => $name,
+            'price' => $price,
+            'quantity' => $quantity,
+        ];
     }
 
     protected function extractQuantity(string $line): int
