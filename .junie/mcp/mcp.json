@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "/Users/bretaudmathieu/.config/herd-lite/bin/php",
+            "args": [
+                "/Users/bretaudmathieu/projet/CourseTracker/course-tracker/artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}
