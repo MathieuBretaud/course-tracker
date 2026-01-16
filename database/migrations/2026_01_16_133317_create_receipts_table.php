@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->date('date')->nullable();
             $table->string('store')->nullable();
-            $table->decimal('total', 100)->nullable();
+            $table->decimal('total', 10)->nullable();
             $table->text('ocr_raw_text')->nullable();
             $table->timestamps();
         });

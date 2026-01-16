@@ -7,7 +7,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 
-import { store } from '@/routes/image';
+import { store } from '@/routes/receipts';
 
 
 
