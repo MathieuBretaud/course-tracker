@@ -22,16 +22,25 @@ class ReceiptController extends Controller
         ]);
     }
 
+    public function show(Receipt $receipt)
+    {
+        $receipt->load('articles');
+
+        return inertia('Receipts/Show', [
+            'receipt' => $receipt,
+        ]);
+    }
+
     public function store(Request $request)
     {
-//        $receipt = new Receipt();
-//        $receipt->save();
+        //        $receipt = new Receipt();
+        //        $receipt->save();
 
-//        if (!$request->hasFile('photo')) {
-//            return redirect()->back()->with('error', 'Aucune photo fournie');
-//        }
+        //        if (!$request->hasFile('photo')) {
+        //            return redirect()->back()->with('error', 'Aucune photo fournie');
+        //        }
 
-//        $receipt->addMedia($request->file('photo'))->toMediaCollection('ticket');
+        //        $receipt->addMedia($request->file('photo'))->toMediaCollection('ticket');
 
         $receipt = Receipt::first();
         $this->processOcr($receipt);
@@ -47,33 +56,47 @@ class ReceiptController extends Controller
             return;
         }
 
-        $filePath = $mediaItems[0]->getPath();
+        $ocrTexts = [];
 
-        $ocr = OcrSpace::parseImageFile(
-            $filePath,
-            OcrSpaceOptions::make()
-                ->language(Language::French)
-                ->ocrEngine(OcrSpaceEngine::Engine2)
-                ->isTable(true)
-                ->scale(true),
-        );
+        foreach ($mediaItems as $media) {
+            $filePath = $media->getPath();
 
-        $ocrText = $ocr->getParsedResults()->first()->getParsedText();
+            $ocr = OcrSpace::parseImageFile(
+                $filePath,
+                OcrSpaceOptions::make()
+                    ->language(Language::French)
+                    ->ocrEngine(OcrSpaceEngine::Engine2)
+                    ->isTable(true)
+                    ->scale(true),
+            );
 
-        if (!$ocrText) {
+            $text = $ocr->getParsedResults()->first()->getParsedText();
+            if ($text) {
+                // Mettre le texte avec la date en premier (haut du ticket)
+                if (preg_match('/Le\s+\d{1,2}\s+\w+\s+\d{4}/i', $text)) {
+                    array_unshift($ocrTexts, $text);
+                } else {
+                    $ocrTexts[] = $text;
+                }
+            }
+        }
+
+        $ocrText = implode("\n", $ocrTexts);
+
+        if (! $ocrText) {
             return;
         }
 
-        $parser = new ReceiptParser();
+        $parser = new ReceiptParser;
         $parsedData = $parser->parse($ocrText);
 
-//        dd([
-//            'articles_count' => count($parsedData['articles']),
-//            'articles' => $parsedData['articles'],
-//            'date' => $parsedData['date'],
-//            'store' => $parsedData['store'],
-//            'total' => $parsedData['total'],
-//        ]);
+        //        dd([
+        //            'articles_count' => count($parsedData['articles']),
+        //            'articles' => $parsedData['articles'],
+        //            'date' => $parsedData['date'],
+        //            'store' => $parsedData['store'],
+        //            'total' => $parsedData['total'],
+        //        ]);
 
         $receipt->update([
             'date' => $parsedData['date'],
